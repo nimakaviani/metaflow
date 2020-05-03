@@ -831,7 +831,7 @@ def start(ctx,
                                         ctx.obj.datastore)
 
     current._set_env(flow_name=ctx.obj.flow.name, is_running=False)
-    if ctx.invoked_subcommand not in ('run', 'resume','kube-deploy'):
+    if ctx.invoked_subcommand not in ('run', 'resume'):
         # run/resume are special cases because they can add more decorators with --with,
         # so they have to take care of themselves.
         decorators._attach_decorators(
