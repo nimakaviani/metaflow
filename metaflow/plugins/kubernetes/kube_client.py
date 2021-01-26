@@ -12,25 +12,39 @@ except NameError:
     basestring = str
 
 from metaflow.exception import MetaflowException
-from metaflow.metaflow_config import get_kubernetes_client,KUBE_NAMESPACE,KUBE_SERVICE_ACCOUNT
-
+from metaflow.metaflow_config import KUBE_NAMESPACE,KUBE_SERVICE_ACCOUNT, \
+        KUBE_RUNTIME_IN_CLUSTER, KUBE_CONFIG_FILE_PATH
 
 MAX_MEMORY = 64*1000
 MAX_CPU = 16
 
-    
+def get_kubernetes_client():
+    import kubernetes.config as kube_config
+    import kubernetes.client as kube_client
+    try:
+        if KUBE_RUNTIME_IN_CLUSTER == 'no':
+            Kube_Configured_Api_Client = kube_config.new_client_from_config(config_file=KUBE_CONFIG_FILE_PATH)
+            return Kube_Configured_Api_Client,kube_client
+        else:
+            kube_config.load_incluster_config()
+            configuration = kube_client.Configuration()
+            Kube_Configured_Api_Client = kube_client.ApiClient(configuration)
+            return Kube_Configured_Api_Client,kube_client
+    except Exception as e:
+        raise MetaflowException("Error Loading Kubernetes Configuration. %s" % str(e))
+
 class KubeClient(object):
     def __init__(self):
-        # todo : set the 
+        # todo : set the
         self._client,self._kube_client = get_kubernetes_client()
 
     def unfinished_jobs(self):
         """unfinished_jobs [Gets the Kube jobs which are unfinished.]
-        
+
         :return: [List with KubeJobSpec Objects]
         :rtype: [List[KubeJobSpec]]
         """
-        # $ NAMESPACE Comes FROM ENV VAR. 
+        # $ NAMESPACE Comes FROM ENV VAR.
         # $ Get the Jobs.
         jobs = self._kube_client.BatchV1Api(self._client).list_namespaced_job(KUBE_NAMESPACE,timeout_seconds=60)
         kube_specs = []
@@ -64,7 +78,6 @@ class KubeJob(object):
         Consists of the `execute` method which provides `RunningKubeJob` Object. 
         `RunningKubeJob` will help provide the logs and jobs for the current 
         Native runtime. 
-    
 
     :raises KubeJobException: [Upon Failure of `execute` method]
     """
@@ -174,7 +187,7 @@ class KubeJob(object):
         # self.container.command = command
         self.command_value = command
         return self
-    
+
     def _validate_cpu(self,cpu):
         # $ Allow floating point values for CPU.
         if not (isinstance(cpu, (float, unicode, basestring,int)) and float(cpu) > 0):

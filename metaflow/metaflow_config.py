@@ -161,6 +161,14 @@ AWS_SESSION_TOKEN = from_conf('AWS_SESSION_TOKEN')
 # $ (TODO) : THIS IS TEMPORARY TO SEE FUNCTIONING OF CODE. NEED TO FIND BETTER WAY OF DOING THIS
 AWS_DEFAULT_REGION = from_conf('AWS_DEFAULT_REGION')
 
+# KubeConfig location
+KUBE_CONFIG_FILE_PATH = from_conf('METAFLOW_KUBE_CONFIG_PATH','~/.kube/config')
+# Default namespace for the kubernetes job
+KUBE_NAMESPACE = from_conf('METAFLOW_KUBE_NAMESPACE','default')
+# Use runtime from inside the cluster
+KUBE_RUNTIME_IN_CLUSTER = from_conf('METAFLOW_KUBE_RUNTIME_IN_CLUSTER','no')
+# Service accounts to use in Kubernetes
+KUBE_SERVICE_ACCOUNT = from_conf('METAFLOW_KUBE_SERVICE_ACCOUNT','default')
 
 # Finalize configuration
 if AWS_SANDBOX_ENABLED:
@@ -228,49 +236,3 @@ else:
         if not n.startswith('__'):
             globals()[n] = o
 
-KUBE_CONFIG_FILE_PATH = from_conf('METAFLOW_KUBE_CONFIG_PATH','~/.kube/config')
-KUBE_NAMESPACE = from_conf('METAFLOW_KUBE_NAMESPACE','default')
-KUBE_RUNTIME_IN_CLUSTER = from_conf('METAFLOW_KUBE_RUNTIME_IN_CLUSTER','no')
-KUBE_SERVICE_ACCOUNT = from_conf('METAFLOW_KUBE_SERVICE_ACCOUNT','default')
-
-def get_kubernetes_client():
-    import kubernetes.config as kube_config
-    import kubernetes.client as kube_client
-    try:
-        if KUBE_RUNTIME_IN_CLUSTER == 'no':
-            Kube_Configured_Api_Client = kube_config.new_client_from_config(config_file=KUBE_CONFIG_FILE_PATH)
-            return Kube_Configured_Api_Client,kube_client
-        else:
-            kube_config.load_incluster_config()
-            configuration = kube_client.Configuration()
-            Kube_Configured_Api_Client = kube_client.ApiClient(configuration)
-            return Kube_Configured_Api_Client,kube_client
-    except Exception as e:
-        raise MetaflowException("Error Loading Kubernetes Configuration. %s" % str(e))
-
-# cached_aws_sandbox_creds = None
-# def get_authenticated_boto3_client(module, params={}):
-#     from metaflow.exception import MetaflowException
-#     import requests
-#     try:
-#         import boto3
-#     except (NameError, ImportError):
-#         raise MetaflowException(
-#             "Could not import module 'boto3'. Install boto3 first.")
-
-#     if AWS_SANDBOX_ENABLED:
-#         global cached_aws_sandbox_creds
-#         if cached_aws_sandbox_creds is None:
-#             # authenticate using STS
-#             url = "%s/auth/token" % AWS_SANDBOX_STS_ENDPOINT_URL
-#             headers = {
-#                 'x-api-key': AWS_SANDBOX_API_KEY
-#             }
-#             try:
-#                 r = requests.get(url, headers=headers)
-#                 r.raise_for_status()
-#                 cached_aws_sandbox_creds = r.json()
-#             except requests.exceptions.HTTPError as e:
-#                 raise MetaflowException(repr(e))
-#         return boto3.session.Session(**cached_aws_sandbox_creds).client(module, **params)
-#     return boto3.client(module, **params)
